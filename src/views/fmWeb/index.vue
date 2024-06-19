@@ -1,5 +1,12 @@
 <template>
   <div class="customToolbarContainer">
+    <!-- Verificar si user está definido -->
+    <div v-if="user">
+      <p>Welcome, {{ user.username }}</p>
+    </div>
+    <div v-else>
+      <p>Loading...</p>
+    </div>
     <FileMenuComponent 
       :modelGraph="graph" 
       :modelAppViewName="appViewName" 
@@ -85,6 +92,7 @@
   import '../../style/gabriel.scss';
   import { applyRules } from './js/ruler.js';
   import { convertXMLToJSON } from './js/misc.js';
+  import { mapGetters } from 'vuex';
 
   export default {
     name: 'FMwebView',
@@ -93,6 +101,7 @@
       CardinalityInputComponent,
     },
     computed: {
+      ...mapGetters(['user', 'isAuthenticated']),
       toolbarItems: () => toolbarItems,
       relationshipTypes: () => relationshipTypes,
       addNote: () => addNote,

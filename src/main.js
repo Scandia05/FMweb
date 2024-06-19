@@ -1,26 +1,27 @@
-import 'element-ui/lib/theme-chalk/index.css'
-import '@/style/mxgraph.css'
-import '@/style/style.scss'
+import 'element-ui/lib/theme-chalk/index.css';
+import '@/style/mxgraph.css';
+import '@/style/style.scss';
+import './plugins/axios'; // Importa el archivo de configuración de Axios
 
-import Vue from 'vue'
-import App from '@/App.vue'
-import router from '@/router'
-import store from '@/store'
+import Vue from 'vue';
+import App from '@/App.vue';
+import router from '@/router';
+import store from '@/store';
 
-// 引入组件库及其组件库样式
-import ElementUI from 'element-ui'
-import locale from 'element-ui/lib/locale/lang/en'
+// Importa Element UI y sus estilos
+import ElementUI from 'element-ui';
+import locale from 'element-ui/lib/locale/lang/en';
 
-Vue.use(ElementUI, { locale })
+Vue.use(ElementUI, { locale });
 
-import * as R from 'ramda'
+import * as R from 'ramda';
 
-Vue.prototype.R = R
+Vue.prototype.R = R;
 
-Vue.config.productionTip = false
+Vue.config.productionTip = false;
 
 new Vue({
   router,
   store,
   render: h => h(App)
-}).$mount('#app')
+}).$mount('#app');

@@ -1,47 +1,84 @@
-import {findIndex, equals, isNil} from 'ramda'
-import vue from 'vue'
+import { findIndex, equals, isNil } from 'ramda';
+import Vue from 'vue';
 
 const appStore = {
   state: {
     sidebarCollapse: true,
-    tagsContainer: {}
+    tagsContainer: {},
+    user: null  // Nuevo estado para el usuario
   },
   getters: {
     sidebarCollapse: (state) => {
-      return state.sidebarCollapse
+      return state.sidebarCollapse;
     },
     tagsContainer: (state) => {
-      return state.tagsContainer
+      return state.tagsContainer;
+    },
+    user: (state) => {
+      return state.user;
+    },
+    isAuthenticated: (state) => {
+      return !isNil(state.user);
     }
   },
   mutations: {
     setSidebarCollapse: (state, collapse) => {
-      state.sidebarCollapse = collapse
+      state.sidebarCollapse = collapse;
     },
     DELETE_TAG: (state, tag) => {
-      const {name} = tag
-
-      vue.delete(state.tagsContainer, name)
+      const { name } = tag;
+      Vue.delete(state.tagsContainer, name);
     },
     ADD_TAG: (state, tag) => {
-      const {name} = tag
-
+      const { name } = tag;
       if (isNil(state.tagsContainer[name])) {
-        vue.set(state.tagsContainer, name, tag)
+        Vue.set(state.tagsContainer, name, tag);
       }
+    },
+    SET_USER: (state, user) => {
+      state.user = user;
+    },
+    CLEAR_USER: (state) => {
+      state.user = null;
     }
   },
   actions: {
-    addOneTagToContainer: ({commit, state}, tag) => {
-      const {name} = tag
-
-      commit('ADD_TAG', tag)
-      return findIndex(equals(name), Object.keys(state.tagsContainer))
+    addOneTagToContainer: ({ commit, state }, tag) => {
+      const { name } = tag;
+      commit('ADD_TAG', tag);
+      return findIndex(equals(name), Object.keys(state.tagsContainer));
     },
-    deleteOneTagFromContainer: ({commit}, tag) => {
-      commit('DELETE_TAG', tag)
+    deleteOneTagFromContainer: ({ commit }, tag) => {
+      commit('DELETE_TAG', tag);
+    },
+    setUser: ({ commit }, user) => {
+      commit('SET_USER', user);
+    },
+    clearUser: ({ commit }) => {
+      commit('CLEAR_USER');
+    },
+    loginUser: async ({ commit }, { email, password }) => {
+      try {
+        const response = await Vue.prototype.$axios.post('/login', { email, password });
+        const { token, username } = response.data;
+        Vue.prototype.$axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        commit('SET_USER', { username, token });
+        return username;
+      } catch (error) {
+        console.error('Error logging in:', error);
+        throw error;
+      }
+    },
+    registerUser: async ({ dispatch }, { username, email, password }) => {
+      try {
+        await Vue.prototype.$axios.post('/register', { username, email, password });
+        await dispatch('loginUser', { email, password });
+      } catch (error) {
+        console.error('Error registering:', error);
+        throw error;
+      }
     }
   }
-}
+};
 
-export default appStore
+export default appStore;
