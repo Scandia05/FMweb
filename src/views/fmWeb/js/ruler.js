@@ -9,6 +9,7 @@ import {
   getSources,
 } from './misc.js';
 import { mxUtils as MxUtils } from "mxgraph/javascript/mxClient";
+import store from '@/store';
 
 export const def01 = (minCardinality, that, edge) => {
   if (!(minCardinality > 0)) {
@@ -229,6 +230,7 @@ export const applyRules = (that, evt) => {
       targetId: target.id,
       edgeId: edge.id,
       relationType: that.relationType,
+      username: store.state.user ? store.state.user.username : 'Unknown',  // Incluir el nombre de usuario
     };
     that.socket.emit('connectNodes', connectionData);
   }

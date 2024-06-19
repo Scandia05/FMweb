@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -66,11 +67,26 @@ app.post('/login', async (req, res) => {
   }
 });
 
+io.use((socket, next) => {
+  const token = socket.handshake.query.token;
+  if (token) {
+    jwt.verify(token, SECRET_KEY, (err, decoded) => {
+      if (err) {
+        return next(new Error('Authentication error'));
+      }
+      socket.user = decoded;
+      next();
+    });
+  } else {
+    next(new Error('Authentication error'));
+  }
+});
+
 io.on('connection', (socket) => {
-  console.log('New client connected:', socket.id);
+  console.log(`New client connected: ${socket.id} (user: ${socket.user.username})`);
 
   socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
+    console.log(`Client disconnected: ${socket.id} (user: ${socket.user.username})`);
     socket.broadcast.emit('clientDisconnected', { id: socket.id });
   });
 

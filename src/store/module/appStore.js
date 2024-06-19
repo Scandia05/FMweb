@@ -59,9 +59,9 @@ const appStore = {
     },
     loginUser: async ({ commit }, { email, password }) => {
       try {
-        const response = await Vue.prototype.$axios.post('/login', { email, password });
+        const response = await Vue.prototype.$http.post('http://localhost:3000/login', { email, password });
         const { token, username } = response.data;
-        Vue.prototype.$axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        Vue.prototype.$http.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         commit('SET_USER', { username, token });
         return username;
       } catch (error) {
@@ -71,7 +71,7 @@ const appStore = {
     },
     registerUser: async ({ dispatch }, { username, email, password }) => {
       try {
-        await Vue.prototype.$axios.post('/register', { username, email, password });
+        await Vue.prototype.$http.post('http://localhost:3000/register', { username, email, password });
         await dispatch('loginUser', { email, password });
       } catch (error) {
         console.error('Error registering:', error);

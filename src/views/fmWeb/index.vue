@@ -1,12 +1,5 @@
 <template>
   <div class="customToolbarContainer">
-    <!-- Verificar si user está definido -->
-    <div v-if="user">
-      <p>Welcome, {{ user.username }}</p>
-    </div>
-    <div v-else>
-      <p>Loading...</p>
-    </div>
     <FileMenuComponent 
       :modelGraph="graph" 
       :modelAppViewName="appViewName" 
@@ -14,6 +7,10 @@
       @validateModelInFMweb="validateModel"
     />
     <CardinalityInputComponent :modelLabelWidth="labelWidth" :modelThat="this"/>
+    
+    <div>
+      <span>Bienvenido, {{ username }}</span> <!-- Muestra el nombre de usuario -->
+    </div>
 
     <div class="workspace column">
       <div class="toolbarContainer" id="toolbarContainer">
@@ -92,7 +89,7 @@
   import '../../style/gabriel.scss';
   import { applyRules } from './js/ruler.js';
   import { convertXMLToJSON } from './js/misc.js';
-  import { mapGetters } from 'vuex';
+  import store from '@/store/module/appStore'; // Importa el store
 
   export default {
     name: 'FMwebView',
@@ -101,10 +98,12 @@
       CardinalityInputComponent,
     },
     computed: {
-      ...mapGetters(['user', 'isAuthenticated']),
       toolbarItems: () => toolbarItems,
       relationshipTypes: () => relationshipTypes,
       addNote: () => addNote,
+      username() {
+        return store.state.user ? store.state.user.username : '';
+      }
     },
     data() {
       return {
@@ -401,7 +400,8 @@
       this.initGraph();
       this.$refs.container.style.background = 'url("./mxgraph/images/grid.gif")';
 
-      this.socket = io('http://localhost:3000'); // Asegúrate de importar y usar io aquí
+      const token = store.state.user ? store.state.user.token : null;
+      this.socket = io('http://localhost:3000', { query: { token } }); // Asegúrate de importar y usar io aquí
 
       this.socket.on('addFeature', (data) => {
         console.log('addFeature event received:', data);
