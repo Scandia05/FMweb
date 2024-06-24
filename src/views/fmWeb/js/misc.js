@@ -1,25 +1,21 @@
 import { mxGraphModel as mxGraphModel } from 'mxgraph/javascript/mxClient';
 
 export const getDescendants = (cell, descendantsArray, that) => {
-  //Gets all descendants of a given cell
   let outgoing = mxGraphModel.prototype.getOutgoingEdges(cell);
   for (let index = 0; index < outgoing.length; index++) {
     const element = outgoing[index];
-    // Ensure element.value is an XML node before accessing getAttribute
     if (element.value && typeof element.value.getAttribute === 'function') {
       if (
         !(element.value.getAttribute("type", "").localeCompare("Optional") == 0) &&
         !(element.value.getAttribute("type", "").localeCompare("Mandatory") == 0)
-      ){
+      ) {
         outgoing.splice(index, 1);
       }
     } else {
-      // If element.value is not an XML node, remove the edge
       outgoing.splice(index, 1);
     }
   }
   let descendants = getTargets(outgoing, that);
-  //fix element amounts in descendants by deleting if it exists in descendantsArray
 
   for (let index = 0; index < descendants.length; index++) {
     const element = descendants[index];
@@ -31,35 +27,24 @@ export const getDescendants = (cell, descendantsArray, that) => {
   if (descendants.length > 0) {
     descendantsArray = fuseArrays(descendantsArray, descendants);
     for (let i = 0; i < descendants.length; i++) {
-      descendantsArray = getDescendants(
-        descendants[i],
-        descendantsArray,
-        that
-      );
+      descendantsArray = getDescendants(descendants[i], descendantsArray, that);
     }
   }
   return descendantsArray;
 }
 
-/**
- * Gets all the ancestors of a given cell
- * Returns an array of all the ancestors
- */
 export const getAncestors = (cell, ancestorsArray, that) => {
-  //Gets all ancestors of a given cell
   let incoming = mxGraphModel.prototype.getIncomingEdges(cell);
   for (let index = 0; index < incoming.length; index++) {
     const element = incoming[index];
-    // Ensure element.value is an XML node before accessing getAttribute
     if (element.value && typeof element.value.getAttribute === 'function') {
       if (
         !(element.value.getAttribute("type", "").localeCompare("Optional") == 0) &&
         !(element.value.getAttribute("type", "").localeCompare("Mandatory") == 0)
-      ){
+      ) {
         incoming.splice(index, 1);
       }
     } else {
-      // If element.value is not an XML node, remove the edge
       incoming.splice(index, 1);
     }
   }
@@ -82,12 +67,7 @@ export const getAncestors = (cell, ancestorsArray, that) => {
   return ancestorsArray;
 }
 
-/**
- * Gets all the relationships that are of the same type
- * Returns an array with all the cells that represent the given type of relationship
- */
 export const getRelationships = (relationshipType, allCells) => {
-  //Gets all relationships of the given type
   let edges = new Array();
   for (let i = 0; i < allCells.length; i++) {
     if (!allCells[i].isVertex()) {
@@ -101,12 +81,9 @@ export const getRelationships = (relationshipType, allCells) => {
 }
 
 export const filterSource = (sourceVertex, arrayEdges, that) => {
-  //Gets all edges in arrayEdges where sourceVertex is the source
   let finalArray = new Array();
   for (let i = 0; i < arrayEdges.length; i++) {
-    if (
-      that.graph.getModel().getTerminal(arrayEdges[i], true) == sourceVertex
-    ) {
+    if (that.graph.getModel().getTerminal(arrayEdges[i], true) == sourceVertex) {
       finalArray.push(arrayEdges[i]);
     }
   }
@@ -114,12 +91,9 @@ export const filterSource = (sourceVertex, arrayEdges, that) => {
 }
 
 export const filterTarget = (targetVertex, arrayEdges, that) => {
-  //Gets all edges in arrayEdges where targetVertex is the target
   let finalArray = new Array();
   for (let i = 0; i < arrayEdges.length; i++) {
-    if (
-      that.graph.getModel().getTerminal(arrayEdges[i], false) == targetVertex
-    ) {
+    if (that.graph.getModel().getTerminal(arrayEdges[i], false) == targetVertex) {
       finalArray.push(arrayEdges[i]);
     }
   }
@@ -127,29 +101,22 @@ export const filterTarget = (targetVertex, arrayEdges, that) => {
 }
 
 export const getSources = (arrayEdges, that) => {
-  //Gets all the sources from the edges in arrayEdges
   let arraySources = new Array();
   for (let i = 0; i < arrayEdges.length; i++) {
-    arraySources.push(
-      that.graph.getModel().getTerminal(arrayEdges[i], true)
-    );
+    arraySources.push(that.graph.getModel().getTerminal(arrayEdges[i], true));
   }
   return arraySources;
 }
 
 export const getTargets = (arrayEdges, that) => {
-  //Gets all the targets from the edges in arrayEdges
   let arrayTargets = new Array();
   for (let i = 0; i < arrayEdges.length; i++) {
-    arrayTargets.push(
-      that.graph.getModel().getTerminal(arrayEdges[i], false)
-    );
+    arrayTargets.push(that.graph.getModel().getTerminal(arrayEdges[i], false));
   }
   return arrayTargets;
 }
 
 export const compareVertex = (arrayVertexA, arrayVertexB) => {
-  //Compares if there is any coincidence from the vertex in arrayA and arrayB. true = any coincidences found
   for (let i = 0; i < arrayVertexA.length; i++) {
     for (let j = 0; j < arrayVertexB.length; j++) {
       if (arrayVertexA[i] == arrayVertexB[j]) {
@@ -161,7 +128,6 @@ export const compareVertex = (arrayVertexA, arrayVertexB) => {
 }
 
 export const findInArray = (arrayVertex, vertex) => {
-  //Looks if vertex is present in arrayVertex. true = vertex found
   for (let i = 0; i < arrayVertex.length; i++) {
     if (arrayVertex[i] == vertex) {
       return true;
@@ -171,7 +137,6 @@ export const findInArray = (arrayVertex, vertex) => {
 }
 
 export const fuseArrays = (arrayA, arrayB) => {
-  //Fuses arrayA and arrayB getting rid of all duplicates
   let finalArray = new Array();
   for (let i = 0; i < arrayA.length; i++) {
     if (!finalArray.includes(arrayA[i])) {
@@ -187,11 +152,9 @@ export const fuseArrays = (arrayA, arrayB) => {
 }
 
 export const convertXMLToJSON = (xmlObject) => {
-  // Create the return object
   var obj = {};
 
-  if (xmlObject.nodeType == 1) { // element
-    // do attributes
+  if (xmlObject.nodeType == 1) {
     if (xmlObject.attributes.length > 0) {
       obj["@attributes"] = {};
       for (var j = 0; j < xmlObject.attributes.length; j++) {
@@ -199,11 +162,10 @@ export const convertXMLToJSON = (xmlObject) => {
         obj["@attributes"][attribute.nodeName] = attribute.nodeValue;
       }
     }
-  } else if (xmlObject.nodeType == 3) { // text
+  } else if (xmlObject.nodeType == 3) {
     obj = xmlObject.nodeValue;
   }
 
-  // do children
   if (xmlObject.hasChildNodes()) {
     for (var i = 0; i < xmlObject.childNodes.length; i++) {
       var item = xmlObject.childNodes.item(i);

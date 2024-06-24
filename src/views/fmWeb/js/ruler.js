@@ -231,6 +231,7 @@ export const applyRules = (that, evt) => {
       edgeId: edge.id,
       relationType: that.relationType,
       username: store.state.user ? store.state.user.username : 'Unknown',  // Incluir el nombre de usuario
+      workspaceId: that.workspaceId, // Incluir el ID del espacio de trabajo
     };
     that.socket.emit('connectNodes', connectionData);
   }

@@ -80,7 +80,8 @@ export default {
           height: edge.getGeometry().height,
         } : null,
         value: edge.value,
-        username: modelThat.user.username // Agregar el nombre de usuario
+        username: modelThat.username, // Corregir para acceder al nombre de usuario correctamente
+        workspaceId: modelThat.workspaceId, // Incluir el ID del espacio de trabajo
       };
       modelThat.isLocalEvent && modelThat.socket.emit('updateNode', data);
 

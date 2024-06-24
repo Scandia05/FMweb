@@ -12,6 +12,12 @@
       <span>Bienvenido, {{ username }}</span> <!-- Muestra el nombre de usuario -->
     </div>
 
+    <div>
+      <el-button @click="createWorkspace">Crear Espacio de Trabajo</el-button>
+      <el-input v-model="workspaceIdToJoin" placeholder="ID del espacio de trabajo"></el-input>
+      <el-button @click="joinWorkspace">Unirse al Espacio de Trabajo</el-button>
+    </div>
+
     <div class="workspace column">
       <div class="toolbarContainer" id="toolbarContainer">
         <ul>
@@ -121,38 +127,31 @@
         firstFeatureCreated: false,
         socket: null,
         isLocalEvent: true, // Flag para evitar bucles de eventos
+        workspaceId: '', // ID del espacio de trabajo actual
+        workspaceIdToJoin: '' // ID del espacio de trabajo al que se quiere unir
       };
     },
     methods: {
       addCellWrapper(toolItem, x, y, graph) {
         this.isLocalEvent = true;
-        console.log('addCellWrapper called with:', toolItem, x, y, graph);
         const featureData = addCell(toolItem, x, y, graph);
-        console.log('featureData:', featureData);
         if (featureData) {
           this.firstFeatureCreated = true;
           this.validateModel();
-          console.log('emit addFeature:', featureData);
+          featureData.workspaceId = this.workspaceId; // Añadir workspaceId a los datos
           this.socket.emit('addFeature', featureData);
-        } else {
-          console.error('Feature data is undefined');
         }
       },
       addNoteWrapper(toolItem, x, y, graph) {
         this.isLocalEvent = true;
-        console.log('addNoteWrapper called with:', toolItem, x, y, graph);
         const noteData = addNote(toolItem, x, y, graph);
-        console.log('noteData:', noteData);
         if (noteData) {
-          console.log('emit addNote:', noteData);
+          noteData.workspaceId = this.workspaceId; // Añadir workspaceId a los datos
           this.socket.emit('addNote', noteData);
-        } else {
-          console.error('Note data is undefined');
         }
       },
       handleAddFeature(data) {
         if (!this.isLocalEvent) {
-          console.log('handleAddFeature called with:', data);
           if (data && this.graph) {
             addCell(data.toolItem, data.x, data.y, this.graph);
           }
@@ -160,7 +159,6 @@
       },
       handleAddNote(data) {
         if (!this.isLocalEvent) {
-          console.log('handleAddNote called with:', data);
           if (data && this.graph) {
             addNote(data.toolItem, data.x, data.y, this.graph);
           }
@@ -168,18 +166,14 @@
       },
       handleDeleteNode(data) {
         if (!this.isLocalEvent) {
-          console.log('handleDeleteNode called with:', data);
           if (data && data.cellIds && this.graph) {
             const cellsToRemove = data.cellIds.map(id => this.graph.getModel().getCell(id));
             this.graph.removeCells(cellsToRemove);
-          } else {
-            console.error('Invalid data for deleteNode:', data);
           }
         }
       },
       handleConnectNodes(data) {
         if (!this.isLocalEvent) {
-          console.log('handleConnectNodes called with:', data);
           if (data && this.graph) {
             const source = this.graph.getModel().getCell(data.sourceId);
             const target = this.graph.getModel().getCell(data.targetId);
@@ -192,19 +186,16 @@
       },
       handleUpdateNode(data) {
         if (!this.isLocalEvent) {
-          console.log('handleUpdateNode called with:', data);
           const cell = this.graph.getModel().getCell(data.id);
           if (cell) {
             this.graph.getModel().beginUpdate();
             try {
               if (data.geometry) {
                 const geometry = new MxGeometry(data.geometry.x, data.geometry.y, data.geometry.width, data.geometry.height);
-                console.log('Setting Geometry in handleUpdateNode with:', geometry);
                 this.graph.getModel().setGeometry(cell, geometry);
               }
               if (data.value) {
                 if (cell.value.nodeType === 1) {
-                  console.log('Setting Attribute in handleUpdateNode with:', data.value);
                   cell.value.setAttribute("name", data.value);
                 } else {
                   this.graph.getModel().setValue(cell, data.value);
@@ -357,7 +348,6 @@
 
         // Listener para cambios en la geometría de los nodos
         this.graph.getModel().addListener(MxEvent.CHANGE, (sender, evt) => {
-          console.log('MxEvent.CHANGE detected changes:', evt.getProperty('changes'));
           if (this.isLocalEvent) {
             const changes = evt.getProperty('changes');
             changes.forEach(change => {
@@ -373,8 +363,8 @@
                     height: geometry.height,
                   } : null,
                   value: cell.value ? (cell.value.nodeType === 1 ? cell.value.getAttribute("name") : cell.value) : null,
+                  workspaceId: this.workspaceId // Añadir workspaceId a los datos
                 };
-                console.log('Emitting updateNode with data:', data);
                 this.socket.emit('updateNode', data);
               }
             });
@@ -393,6 +383,34 @@
         return Object.keys(relation.style)
           .map((attr) => `${attr}=${relation.style[attr]}`)
           .join(";");
+      },
+      createWorkspace() {
+        const token = store.state.user ? store.state.user.token : null;
+        if (token) {
+          this.$http.post('http://localhost:3000/createWorkspace', { token, data: {} })
+            .then(response => {
+              this.workspaceId = response.data.workspaceId;
+              console.log('Workspace created with ID:', this.workspaceId);
+              this.socket.emit('joinWorkspace', this.workspaceId); // Unirse automáticamente al espacio de trabajo creado
+            })
+            .catch(error => {
+              console.error('Error creating workspace:', error);
+            });
+        }
+      },
+      joinWorkspace() {
+        const token = store.state.user ? store.state.user.token : null;
+        if (token && this.workspaceIdToJoin) {
+          this.$http.post('http://localhost:3000/joinWorkspace', { token, workspaceId: this.workspaceIdToJoin })
+            .then(() => {
+              this.workspaceId = this.workspaceIdToJoin;
+              console.log('Joined workspace with ID:', this.workspaceId);
+              this.socket.emit('joinWorkspace', this.workspaceId); // Unirse al espacio de trabajo especificado
+            })
+            .catch(error => {
+              console.error('Error joining workspace:', error);
+            });
+        }
       }
     },
     mounted() {
@@ -404,43 +422,42 @@
       this.socket = io('http://localhost:3000', { query: { token } }); // Asegúrate de importar y usar io aquí
 
       this.socket.on('addFeature', (data) => {
-        console.log('addFeature event received:', data);
         this.isLocalEvent = false;
         this.handleAddFeature(data);
         this.isLocalEvent = true;
       });
 
       this.socket.on('addNote', (data) => {
-        console.log('addNote event received:', data);
         this.isLocalEvent = false;
         this.handleAddNote(data);
         this.isLocalEvent = true;
       });
 
       this.socket.on('updateNode', (data) => {
-        console.log('updateNode event received:', data);
         this.isLocalEvent = false;
         this.handleUpdateNode(data);
         this.isLocalEvent = true;
       });
 
       this.socket.on('deleteNode', (data) => {
-        console.log('deleteNode event received:', data);
         this.isLocalEvent = false;
         this.handleDeleteNode(data);
         this.isLocalEvent = true;
       });
 
       this.socket.on('connectNodes', (data) => {
-        console.log('connectNodes event received:', data);
         this.isLocalEvent = false;
         this.handleConnectNodes(data);
         this.isLocalEvent = true;
       });
 
+      this.socket.on('workspaceData', (data) => {
+        // Maneja los datos del espacio de trabajo aquí
+        console.log('Workspace data received:', data);
+      });
+
       // eslint-disable-next-line no-unused-vars
       this.socket.onAny((eventName, ...args) => {
-        console.log('socket.onAny called with eventName:', eventName, 'args:', args);
         this.isLocalEvent = false;
       });
     },

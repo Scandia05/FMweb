@@ -1,4 +1,3 @@
-// listener.js
 import {
   mxEvent as MxEvent,
   mxUtils as MxUtils,
@@ -17,7 +16,9 @@ export const initializeKeyHandler = (that, graph) => {
       that.graph.removeCells();
       that.validateModel();
       // Emit the delete event
-      that.socket.emit('deleteNode', { cellIds });
+      that.isLocalEvent = true;
+      console.log('Emitiendo deleteNode con los datos:', { cellIds, workspaceId: that.workspaceId });
+      that.socket.emit('deleteNode', { cellIds, workspaceId: that.workspaceId });
     }
   });
 
@@ -29,7 +30,9 @@ export const initializeKeyHandler = (that, graph) => {
       that.graph.removeCells();
       that.validateModel();
       // Emit the delete event
-      that.socket.emit('deleteNode', { cellIds });
+      that.isLocalEvent = true;
+      console.log('Emitiendo deleteNode con los datos:', { cellIds, workspaceId: that.workspaceId });
+      that.socket.emit('deleteNode', { cellIds, workspaceId: that.workspaceId });
     }
   });
 };
@@ -96,13 +99,16 @@ export const initializeListeners = (that, other) => {
               height: geometry.height,
             } : null,
             value: cell.value ? (cell.value.nodeType === 1 ? cell.value.getAttribute("name") : cell.value) : null,
+            workspaceId: that.workspaceId
           };
-          console.log('Emitting updateNode with data:', data);
+          console.log('Emitiendo updateNode con los datos:', data);
+          that.isLocalEvent = true;
           that.socket.emit('updateNode', data);
         }
         if (change.constructor.name === 'mxChildChange' && change.parent === null) {
-          const data = { cellIds: [change.child.id] }; // Emitir un array de cellIds
-          console.log('Emitting deleteNode with data:', data);
+          const data = { cellIds: [change.child.id], workspaceId: that.workspaceId }; // Emitir un array de cellIds
+          console.log('Emitiendo deleteNode con los datos:', data);
+          that.isLocalEvent = true;
           that.socket.emit('deleteNode', data);
         }
         if (change.constructor.name === 'mxTerminalChange') {
@@ -110,9 +116,11 @@ export const initializeListeners = (that, other) => {
             sourceId: change.cell.source ? change.cell.source.id : null,
             targetId: change.cell.target ? change.cell.target.id : null,
             edgeId: change.cell.id,
-            relationType: change.cell.value ? change.cell.value.getAttribute("type") : null
+            relationType: change.cell.value ? change.cell.value.getAttribute("type") : null,
+            workspaceId: that.workspaceId
           };
-          console.log('Emitting updateConnection with data:', data);
+          console.log('Emitiendo updateConnection con los datos:', data);
+          that.isLocalEvent = true;
           that.socket.emit('updateConnection', data);
         }
       });
@@ -143,8 +151,10 @@ export const displayCellRenameModal = (cell, other) => {
             height: geometry.height,
           } : null,
           value: cell.value ? (cell.value.nodeType === 1 ? cell.value.getAttribute("name") : cell.value) : null,
+          workspaceId: other.workspaceId
         };
-        console.log('Emitting updateNode with data (rename):', data);
+        console.log('Emitiendo updateNode con los datos (rename):', data);
+        other.isLocalEvent = true;
         other.socket.emit('updateNode', data);
       } finally {
         other.graph.getModel().endUpdate();

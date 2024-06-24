@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -19,6 +18,14 @@ const userSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model('User', userSchema);
+
+const workspaceSchema = new mongoose.Schema({
+  workspaceId: { type: String, required: true },
+  users: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  data: { type: mongoose.Schema.Types.Mixed, default: {} }
+});
+
+const Workspace = mongoose.model('Workspace', workspaceSchema);
 
 const app = express();
 const server = http.createServer(app);
@@ -67,6 +74,45 @@ app.post('/login', async (req, res) => {
   }
 });
 
+app.post('/createWorkspace', async (req, res) => {
+  const { token, data } = req.body;
+  try {
+    const decoded = jwt.verify(token, SECRET_KEY);
+    const workspace = new Workspace({
+      workspaceId: uuidv4(),
+      users: [decoded.id],
+      data: data || {}
+    });
+    await workspace.save();
+    console.log(`Workspace created with ID: ${workspace.workspaceId}`);
+    res.status(201).json({ workspaceId: workspace.workspaceId });
+  } catch (error) {
+    console.error('Error creating workspace:', error);
+    res.status(400).json({ message: 'Error creating workspace', error });
+  }
+});
+
+app.post('/joinWorkspace', async (req, res) => {
+  const { token, workspaceId } = req.body;
+  try {
+    const decoded = jwt.verify(token, SECRET_KEY);
+    const workspace = await Workspace.findOne({ workspaceId });
+    if (workspace) {
+      if (!workspace.users.includes(decoded.id)) {
+        workspace.users.push(decoded.id);
+        await workspace.save();
+      }
+      console.log(`User ${decoded.username} joined workspace ${workspaceId}`);
+      res.status(200).json({ message: 'Joined workspace successfully' });
+    } else {
+      res.status(404).json({ message: 'Workspace not found' });
+    }
+  } catch (error) {
+    console.error('Error joining workspace:', error);
+    res.status(400).json({ message: 'Error joining workspace', error });
+  }
+});
+
 io.use((socket, next) => {
   const token = socket.handshake.query.token;
   if (token) {
@@ -90,29 +136,55 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('clientDisconnected', { id: socket.id });
   });
 
-  socket.on('addFeature', (data) => {
-    socket.broadcast.emit('addFeature', data);
+  socket.on('joinWorkspace', async (workspaceId) => {
+    console.log(`User ${socket.user.username} attempting to join workspace ${workspaceId}`);
+    const workspace = await Workspace.findOne({ workspaceId });
+    if (workspace) {
+      socket.join(workspaceId);
+      socket.emit('workspaceData', workspace.data);
+      console.log(`User ${socket.user.username} joined workspace ${workspaceId}`);
+    }
   });
 
-  socket.on('addNote', (data) => {
-    socket.broadcast.emit('addNote', data);
+  socket.on('addFeature', async (data) => {
+    const { workspaceId } = data;
+    console.log(`addFeature event in workspace ${workspaceId}`);
+    await Workspace.updateOne({ workspaceId }, { $push: { "data.features": data } });
+    io.to(workspaceId).emit('addFeature', data);
   });
 
-  socket.on('updateNode', (data) => {
-    socket.broadcast.emit('updateNode', data);
+  socket.on('addNote', async (data) => {
+    const { workspaceId } = data;
+    console.log(`addNote event in workspace ${workspaceId}`);
+    await Workspace.updateOne({ workspaceId }, { $push: { "data.notes": data } });
+    io.to(workspaceId).emit('addNote', data);
   });
 
-  socket.on('deleteNode', (cellId) => {
-    console.log('deleteNode event received:', cellId);
-    socket.broadcast.emit('deleteNode', cellId);
+  socket.on('updateNode', async (data) => {
+    const { workspaceId } = data;
+    console.log(`updateNode event in workspace ${workspaceId}`);
+    await Workspace.updateOne({ workspaceId, "data.nodes.id": data.id }, { $set: { "data.nodes.$": data } });
+    io.to(workspaceId).emit('updateNode', data);
   });
 
-  socket.on('connectNodes', (data) => {
-    socket.broadcast.emit('connectNodes', data);
+  socket.on('deleteNode', async (data) => {
+    const { workspaceId, cellIds } = data;
+    console.log(`deleteNode event in workspace ${workspaceId}`);
+    await Workspace.updateOne({ workspaceId }, { $pull: { "data.nodes": { id: { $in: cellIds } } } });
+    io.to(workspaceId).emit('deleteNode', data);
+  });
+
+  socket.on('connectNodes', async (data) => {
+    const { workspaceId } = data;
+    console.log(`connectNodes event in workspace ${workspaceId}`);
+    await Workspace.updateOne({ workspaceId }, { $push: { "data.connections": data } });
+    io.to(workspaceId).emit('connectNodes', data);
   });
 
   socket.on('cursorMove', (data) => {
-    socket.broadcast.emit('cursorMove', data);
+    const { workspaceId } = data;
+    console.log(`cursorMove event in workspace ${workspaceId}`);
+    io.to(workspaceId).emit('cursorMove', data);
   });
 });
 
