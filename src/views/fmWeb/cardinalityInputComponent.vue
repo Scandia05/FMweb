@@ -82,6 +82,7 @@ export default {
         value: edge.value,
         username: modelThat.username, // Corregir para acceder al nombre de usuario correctamente
         workspaceId: modelThat.workspaceId, // Incluir el ID del espacio de trabajo
+        clientId: modelThat.clientId // Incluir el ID del cliente
       };
       modelThat.isLocalEvent && modelThat.socket.emit('updateNode', data);
 
@@ -98,6 +99,15 @@ export default {
           modelThat.dialogFormVisible = false;
           let edge = modelThat.graph.getSelectionCell();
           modelThat.graph.removeCells([edge]);
+          
+          // Emit a delete event for the cancelled edge
+          const data = {
+            cellIds: [edge.id],
+            workspaceId: modelThat.workspaceId,
+            clientId: modelThat.clientId // Incluir el ID del cliente
+          };
+          modelThat.socket.emit('deleteNode', data);
+
           this.$message({
             type: "info",
             message: "Cardinality Input canceled, the relation was removed",

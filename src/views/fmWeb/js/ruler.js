@@ -232,7 +232,8 @@ export const applyRules = (that, evt) => {
       relationType: that.relationType,
       username: store.state.user ? store.state.user.username : 'Unknown',  // Incluir el nombre de usuario
       workspaceId: that.workspaceId, // Incluir el ID del espacio de trabajo
+      clientId: that.clientId // Incluir el ID del cliente
     };
-    that.socket.emit('connectNodes', connectionData);
+    that.isLocalEvent && that.socket.emit('connectNodes', connectionData);
   }
 }
